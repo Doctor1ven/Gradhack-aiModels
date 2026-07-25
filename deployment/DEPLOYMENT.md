@@ -1,151 +1,263 @@
-# SageMaker Serverless Deployment Package
+# SageMaker Custom Container Deployment
 
-This folder packages two existing trained models for Amazon SageMaker AI. It
-does not retrain, rename, overwrite, or delete the trained model files.
+This deployment uses one reusable custom SageMaker inference container for both
+models. It does not retrain, rename, overwrite, or delete the trained `.joblib`
+files.
 
-Serverless Inference is the default because it is a good fit for hackathon
-testing: there is no always-on instance to manage, traffic can be intermittent,
-and costs are easier to limit while endpoints are idle. Standard real-time
-endpoints remain available as a fallback.
+The custom image runs Python 3.12 so the endpoint can install and run these
+exact model dependencies:
+
+```text
+scikit-learn==1.9.0
+xgboost==3.3.0
+pandas==3.0.5
+joblib==1.5.3
+numpy
+```
 
 ## Files
 
-- `readiness/model/recovery_readiness_longitudinal_pipeline.joblib`
-- `readiness/code/inference.py`
-- `readiness/code/requirements.txt`
+- `Dockerfile`
+- `container-requirements.txt`
+- `app/server.py`
+- `app/__init__.py`
+- `build_and_push.sh`
 - `readiness/model.tar.gz`
-- `vo2/model/vo2_forecast_pipeline.joblib`
-- `vo2/code/inference.py`
-- `vo2/code/requirements.txt`
 - `vo2/model.tar.gz`
 - `deploy_models.py`
 - `test_endpoints.py`
 - `cleanup_endpoints.py`
-- `DEPLOYMENT.md`
 
-Each archive contains this SageMaker layout at the archive root:
+Each model archive contains this layout at the archive root:
 
-- `model_file.joblib`
-- `code/inference.py`
-- `code/requirements.txt`
+```text
+model_file.joblib
+code/inference.py
+code/requirements.txt
+```
 
-The endpoint containers install XGBoost and the other model dependencies from
-each archive's `code/requirements.txt`.
+The container is generic. At startup it imports `/opt/ml/model/code/inference.py`
+from the extracted model archive, calls that module's `model_fn()`, then routes
+SageMaker requests through the existing `input_fn()`, `predict_fn()`, and
+`output_fn()`. This preserves the current request and response schemas.
 
-## Serverless vs Real-Time
+## Endpoints
 
-Serverless endpoints start compute only when requests arrive. They are simpler
-for low-volume demos, but the first request after idle time can have a cold
-start while SageMaker provisions capacity and loads the model.
+The endpoint names are unchanged:
 
-Real-time endpoints keep instances running. They usually avoid cold starts, but
-the instance accrues charges while it exists. Use real-time mode if serverless
-startup or package compatibility fails and you need the `ml.m5.large` fallback.
+```text
+recovery-readiness-endpoint
+vo2-forecast-endpoint
+```
+
+The readiness endpoint returns:
+
+```json
+{
+  "readiness_label": 1,
+  "readiness": "MAINTAIN",
+  "confidence": 0.52,
+  "probabilities": {
+    "REDUCE": 0.08,
+    "MAINTAIN": 0.52,
+    "PROGRESS": 0.39
+  }
+}
+```
+
+The VO2 endpoint returns:
+
+```json
+{
+  "current_vo2": 37.9,
+  "predicted_vo2_4_weeks": 38.7,
+  "predicted_change": 0.8
+}
+```
 
 ## Configuration
 
-Open `deployment/deploy_models.py`. The important defaults are:
+Important defaults in `deploy_models.py`:
 
 ```python
 DEPLOYMENT_MODE = "serverless"
+REGION = "eu-west-1"
+S3_PREFIX = "gradhack-health-coach/models"
+ECR_REPOSITORY_NAME = "gradhack-health-coach-inference"
+ECR_IMAGE_TAG = "py312"
 SERVERLESS_MEMORY_MB = 4096
 SERVERLESS_MAX_CONCURRENCY = 5
 REALTIME_INSTANCE_TYPE = "ml.m5.large"
 REALTIME_INITIAL_INSTANCE_COUNT = 1
-REGION = "eu-west-1"
-S3_PREFIX = "gradhack-health-coach/models"
 ```
 
-To switch to real-time fallback, either edit:
+`deploy_models.py` does not hardcode an AWS account ID. It resolves the account
+with STS and derives the default image URI:
 
-```python
-DEPLOYMENT_MODE = "realtime"
+```text
+<account-id>.dkr.ecr.eu-west-1.amazonaws.com/gradhack-health-coach-inference:py312
 ```
 
-or run:
+You can override the image at deployment time:
 
 ```bash
-python deploy_models.py --mode realtime
+python deploy_models.py --image-uri <full-ecr-image-uri>
 ```
 
-To tune serverless capacity, change `SERVERLESS_MEMORY_MB` and
-`SERVERLESS_MAX_CONCURRENCY`.
+## Prerequisites
 
-## S3 Bucket
+Run these commands from a SageMaker Studio/JupyterLab terminal with Docker
+available.
 
-The deploy script uses the SageMaker default S3 bucket unless `S3_BUCKET` is
-set in `deploy_models.py` or `--s3-bucket` is passed on the command line.
+Install client dependencies:
 
-If you create your own bucket, create it in `eu-west-1`. The script uploads:
+```bash
+pip install boto3 sagemaker pandas
+```
+
+Confirm AWS identity and region:
+
+```bash
+aws sts get-caller-identity
+aws configure get region
+```
+
+Use `eu-west-1` for all commands:
+
+```bash
+export AWS_REGION=eu-west-1
+```
+
+## Build And Push Image
+
+From the `deployment` folder:
+
+```bash
+cd deployment
+```
+
+Create the ECR repository:
+
+```bash
+aws ecr create-repository \
+  --repository-name gradhack-health-coach-inference \
+  --region eu-west-1
+```
+
+If the repository already exists, this command returns an error. That is safe;
+continue with login/build/push.
+
+Set account and image variables without hardcoding the account ID:
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+IMAGE_URI="${ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/gradhack-health-coach-inference:py312"
+```
+
+Log Docker into ECR:
+
+```bash
+aws ecr get-login-password --region eu-west-1 \
+  | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com"
+```
+
+Build the image:
+
+```bash
+docker build --platform linux/amd64 -t gradhack-health-coach-inference:py312 .
+```
+
+Tag the image:
+
+```bash
+docker tag gradhack-health-coach-inference:py312 "${IMAGE_URI}"
+```
+
+Push the image:
+
+```bash
+docker push "${IMAGE_URI}"
+```
+
+Shortcut command:
+
+```bash
+bash build_and_push.sh
+```
+
+The shortcut creates the repository if needed, logs in, builds, pushes, and
+prints the final image URI.
+
+## Deploy
+
+Serverless is the default:
+
+```bash
+python deploy_models.py
+```
+
+This uploads:
 
 ```text
 s3://<bucket>/gradhack-health-coach/models/readiness/model.tar.gz
 s3://<bucket>/gradhack-health-coach/models/vo2/model.tar.gz
 ```
 
-The script does not hardcode an AWS account ID or IAM role ARN. Inside
-SageMaker Studio it uses `sagemaker.get_execution_role()`. Outside Studio, pass
-`--role-arn` or set `SAGEMAKER_EXECUTION_ROLE_ARN`.
+Then it creates:
 
-## SageMaker Studio Setup
+- SageMaker model resource `recovery-readiness-model`
+- SageMaker model resource `vo2-forecast-model`
+- endpoint config for `recovery-readiness-endpoint`
+- endpoint config for `vo2-forecast-endpoint`
+- endpoint `recovery-readiness-endpoint`
+- endpoint `vo2-forecast-endpoint`
 
-Upload the project folder, including `deployment`, into SageMaker Studio
-JupyterLab. Open a terminal in the `deployment` folder and install client
-dependencies:
-
-```bash
-pip install boto3 sagemaker pandas
-```
-
-## Deploy
-
-From the `deployment` folder in SageMaker Studio JupyterLab:
+If serverless custom containers are not compatible in your account or region,
+use the real-time fallback:
 
 ```bash
-python deploy_models.py
+python deploy_models.py --mode realtime
 ```
 
-The script prints the region, SageMaker SDK version, deployment mode, S3 bucket,
-S3 prefix, role, endpoint names, serverless settings, real-time fallback
-settings, archive paths, framework version, and Python version before it
-deploys.
+To deploy with an explicit image URI:
 
-It then uploads both archives, creates separate endpoints, and waits until each
-endpoint is `InService`. If an endpoint reaches `Failed`, the script prints the
-failure reason.
+```bash
+python deploy_models.py --image-uri "${IMAGE_URI}"
+```
+
+To pass an explicit SageMaker execution role outside Studio:
+
+```bash
+python deploy_models.py --role-arn arn:aws:iam::<account-id>:role/<role-name>
+```
 
 ## Test
 
-After deployment:
+After both endpoints are `InService`:
 
 ```bash
 python test_endpoints.py
 ```
 
-The tester waits for both endpoints to be `InService`, sends one row from
-`../longitudinal_data/test.csv` to `recovery-readiness-endpoint`, sends one row
-from `../vo2_data/test.csv` to `vo2-forecast-endpoint`, and prints both JSON
-responses. It retries only cold-start/startup style SageMaker invocation
-errors, such as `ModelNotReadyException`, service unavailable errors, internal
-failures, and throttling. It does not retry malformed requests or
-missing-feature errors.
+The tester waits for both endpoints, sends one row from
+`../longitudinal_data/test.csv` to the readiness endpoint, sends one row from
+`../vo2_data/test.csv` to the VO2 endpoint, and prints both JSON responses.
 
 ## Logs
 
-Endpoint logs are in Amazon CloudWatch:
+Endpoint logs are in CloudWatch:
 
 ```text
 /aws/sagemaker/Endpoints/recovery-readiness-endpoint
 /aws/sagemaker/Endpoints/vo2-forecast-endpoint
 ```
 
-Use these logs for dependency installation errors, model loading failures,
-request parsing errors, and prediction failures.
+Use these logs for container startup failures, model loading failures, request
+parsing errors, and prediction errors.
 
 ## Cleanup
 
-Real-time and serverless endpoints can incur charges. Delete resources after
-testing:
+Delete deployed SageMaker resources:
 
 ```bash
 python cleanup_endpoints.py
@@ -157,19 +269,6 @@ Equivalent command:
 python deploy_models.py --cleanup
 ```
 
-Cleanup deletes both endpoints, both endpoint configurations, and both
-SageMaker model resources. It does not delete the S3 bucket.
-
-## Compatibility Warning
-
-The local models were saved with pinned package versions in each
-`code/requirements.txt`, including XGBoost. Managed SageMaker scikit-learn
-containers may still have package compatibility limits. If container startup
-fails, inspect CloudWatch logs first. If the managed image cannot install the
-required versions, either use real-time fallback with:
-
-```bash
-python deploy_models.py --mode realtime
-```
-
-or build a custom inference image with the pinned dependencies.
+Cleanup deletes both endpoints, their active endpoint configs, and both
+SageMaker model resources. It does not delete the ECR image, ECR repository,
+S3 model artifacts, or S3 bucket.

@@ -1,7 +1,8 @@
-"""Deploy packaged models to SageMaker Serverless or real-time endpoints.
+"""Deploy packaged models with a reusable custom SageMaker inference image.
 
-Run this from SageMaker Studio/JupyterLab. Serverless Inference is the default
-for hackathon testing; real-time endpoints remain available as a fallback.
+Run this from SageMaker Studio/JupyterLab after building and pushing the custom
+container image to Amazon ECR. Serverless Inference is the default; real-time
+endpoints remain available as a fallback.
 """
 
 from __future__ import annotations
@@ -15,8 +16,6 @@ from typing import Any
 import boto3
 from botocore.exceptions import ClientError
 import sagemaker
-from sagemaker.serverless import ServerlessInferenceConfig
-from sagemaker.sklearn.model import SKLearnModel
 
 
 DEPLOYMENT_MODE = "serverless"
@@ -32,11 +31,12 @@ REGION = "eu-west-1"
 S3_BUCKET = ""
 S3_PREFIX = "gradhack-health-coach/models"
 
+ECR_REPOSITORY_NAME = "gradhack-health-coach-inference"
+ECR_IMAGE_TAG = "py312"
+ECR_IMAGE_URI = ""
+
 READINESS_ENDPOINT_NAME = "recovery-readiness-endpoint"
 VO2_ENDPOINT_NAME = "vo2-forecast-endpoint"
-
-FRAMEWORK_VERSION = "1.2-1"
-PY_VERSION = "py3"
 
 ENDPOINT_WAIT_SECONDS = 60
 ENDPOINT_MAX_WAIT_SECONDS = 3600
@@ -45,22 +45,25 @@ BASE_DIR = Path(__file__).resolve().parent
 MODELS = {
     "readiness": {
         "archive": BASE_DIR / "readiness" / "model.tar.gz",
-        "code_dir": BASE_DIR / "readiness" / "code",
         "endpoint_name": READINESS_ENDPOINT_NAME,
         "model_name": "recovery-readiness-model",
+        "container_env": {"MODEL_KIND": "readiness"},
     },
     "vo2": {
         "archive": BASE_DIR / "vo2" / "model.tar.gz",
-        "code_dir": BASE_DIR / "vo2" / "code",
         "endpoint_name": VO2_ENDPOINT_NAME,
         "model_name": "vo2-forecast-model",
+        "container_env": {"MODEL_KIND": "vo2"},
     },
 }
 
 
-def make_session() -> sagemaker.Session:
-    boto_session = boto3.Session(region_name=REGION)
-    return sagemaker.Session(boto_session=boto_session)
+def make_boto_session() -> boto3.Session:
+    return boto3.Session(region_name=REGION)
+
+
+def make_sagemaker_session() -> sagemaker.Session:
+    return sagemaker.Session(boto_session=make_boto_session())
 
 
 def resolve_role(role_arn: str | None) -> str:
@@ -76,6 +79,19 @@ def resolve_bucket(sm_session: sagemaker.Session, configured_bucket: str | None)
     return configured_bucket or S3_BUCKET or sm_session.default_bucket()
 
 
+def resolve_image_uri(image_uri: str | None) -> str:
+    if image_uri:
+        return image_uri
+    env_image_uri = os.getenv("SAGEMAKER_INFERENCE_IMAGE_URI")
+    if env_image_uri:
+        return env_image_uri
+    if ECR_IMAGE_URI:
+        return ECR_IMAGE_URI
+
+    account_id = make_boto_session().client("sts").get_caller_identity()["Account"]
+    return f"{account_id}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPOSITORY_NAME}:{ECR_IMAGE_TAG}"
+
+
 def validate_mode(mode: str) -> None:
     if mode not in VALID_DEPLOYMENT_MODES:
         raise ValueError(f"DEPLOYMENT_MODE must be one of {sorted(VALID_DEPLOYMENT_MODES)}.")
@@ -87,7 +103,7 @@ def validate_archives() -> None:
         raise FileNotFoundError(f"Missing model archives: {missing}")
 
 
-def print_configuration(mode: str, bucket: str, role: str) -> None:
+def print_configuration(mode: str, bucket: str, role: str, image_uri: str) -> None:
     print("Deployment configuration")
     print(f"AWS region: {REGION}")
     print(f"SageMaker SDK version: {sagemaker.__version__}")
@@ -95,14 +111,13 @@ def print_configuration(mode: str, bucket: str, role: str) -> None:
     print(f"S3 bucket: {bucket}")
     print(f"S3 prefix: {S3_PREFIX}")
     print(f"Execution role: {role}")
+    print(f"Custom inference image: {image_uri}")
     print(f"Readiness endpoint: {READINESS_ENDPOINT_NAME}")
     print(f"VO2 endpoint: {VO2_ENDPOINT_NAME}")
     print(f"Serverless memory MB: {SERVERLESS_MEMORY_MB}")
     print(f"Serverless maximum concurrency: {SERVERLESS_MAX_CONCURRENCY}")
     print(f"Real-time fallback instance type: {REALTIME_INSTANCE_TYPE}")
     print(f"Real-time initial instance count: {REALTIME_INITIAL_INSTANCE_COUNT}")
-    print(f"Selected framework version: {FRAMEWORK_VERSION}")
-    print(f"Selected Python version: {PY_VERSION}")
     print("Archive paths:")
     for key, config in MODELS.items():
         print(f"  {key}: {config['archive']}")
@@ -121,35 +136,84 @@ def upload_archives(sm_session: sagemaker.Session, bucket: str) -> dict[str, str
     return uploaded
 
 
-def make_model(config: dict[str, Any], model_data: str, role: str, sm_session: sagemaker.Session) -> SKLearnModel:
-    return SKLearnModel(
-        model_data=model_data,
-        role=role,
-        entry_point="inference.py",
-        source_dir=str(config["code_dir"]),
-        framework_version=FRAMEWORK_VERSION,
-        py_version=PY_VERSION,
-        sagemaker_session=sm_session,
-        name=config["model_name"],
+def delete_model_if_exists(sm_client: Any, model_name: str) -> None:
+    try:
+        sm_client.delete_model(ModelName=model_name)
+        print(f"Deleted existing model resource: {model_name}")
+    except ClientError as exc:
+        code = exc.response.get("Error", {}).get("Code")
+        if code not in {"ValidationException", "ResourceNotFound"}:
+            raise
+
+
+def create_model(
+    sm_client: Any,
+    config: dict[str, Any],
+    model_data: str,
+    role: str,
+    image_uri: str,
+) -> None:
+    model_name = config["model_name"]
+    delete_model_if_exists(sm_client, model_name)
+    sm_client.create_model(
+        ModelName=model_name,
+        ExecutionRoleArn=role,
+        PrimaryContainer={
+            "Image": image_uri,
+            "ModelDataUrl": model_data,
+            "Environment": config["container_env"],
+        },
     )
+    print(f"Created model resource: {model_name}")
 
 
-def deploy_model(model: SKLearnModel, endpoint_name: str, mode: str) -> None:
+def create_endpoint_config(sm_client: Any, config: dict[str, Any], mode: str) -> str:
+    endpoint_config_name = f"{config['endpoint_name']}-{int(time.time())}"
+    variant: dict[str, Any] = {
+        "VariantName": "AllTraffic",
+        "ModelName": config["model_name"],
+    }
     if mode == "serverless":
-        serverless_config = ServerlessInferenceConfig(
-            memory_size_in_mb=SERVERLESS_MEMORY_MB,
-            max_concurrency=SERVERLESS_MAX_CONCURRENCY,
-        )
-        model.deploy(
-            serverless_inference_config=serverless_config,
-            endpoint_name=endpoint_name,
-        )
+        variant["ServerlessConfig"] = {
+            "MemorySizeInMB": SERVERLESS_MEMORY_MB,
+            "MaxConcurrency": SERVERLESS_MAX_CONCURRENCY,
+        }
     else:
-        model.deploy(
-            initial_instance_count=REALTIME_INITIAL_INSTANCE_COUNT,
-            instance_type=REALTIME_INSTANCE_TYPE,
-            endpoint_name=endpoint_name,
+        variant["InitialInstanceCount"] = REALTIME_INITIAL_INSTANCE_COUNT
+        variant["InstanceType"] = REALTIME_INSTANCE_TYPE
+
+    sm_client.create_endpoint_config(
+        EndpointConfigName=endpoint_config_name,
+        ProductionVariants=[variant],
+    )
+    print(f"Created endpoint config: {endpoint_config_name}")
+    return endpoint_config_name
+
+
+def endpoint_exists(sm_client: Any, endpoint_name: str) -> bool:
+    try:
+        sm_client.describe_endpoint(EndpointName=endpoint_name)
+        return True
+    except ClientError as exc:
+        code = exc.response.get("Error", {}).get("Code")
+        if code in {"ValidationException", "ResourceNotFound"}:
+            return False
+        raise
+
+
+def deploy_endpoint(sm_client: Any, endpoint_name: str, endpoint_config_name: str) -> None:
+    if endpoint_exists(sm_client, endpoint_name):
+        sm_client.update_endpoint(
+            EndpointName=endpoint_name,
+            EndpointConfigName=endpoint_config_name,
         )
+        print(f"Updated endpoint: {endpoint_name}")
+    else:
+        sm_client.create_endpoint(
+            EndpointName=endpoint_name,
+            EndpointConfigName=endpoint_config_name,
+        )
+        print(f"Created endpoint: {endpoint_name}")
 
 
 def wait_for_endpoint(sm_client: Any, endpoint_name: str) -> str:
@@ -169,22 +233,26 @@ def wait_for_endpoint(sm_client: Any, endpoint_name: str) -> str:
         time.sleep(ENDPOINT_WAIT_SECONDS)
 
 
-def deploy(mode: str, bucket_override: str | None, role_arn: str | None) -> None:
+def deploy(mode: str, bucket_override: str | None, role_arn: str | None, image_uri_arg: str | None) -> None:
     validate_mode(mode)
     validate_archives()
 
-    sm_session = make_session()
+    boto_session = make_boto_session()
+    sm_client = boto_session.client("sagemaker")
+    sm_session = make_sagemaker_session()
     bucket = resolve_bucket(sm_session, bucket_override)
     role = resolve_role(role_arn)
-    print_configuration(mode, bucket, role)
+    image_uri = resolve_image_uri(image_uri_arg)
+
+    print_configuration(mode, bucket, role, image_uri)
     model_data = upload_archives(sm_session, bucket)
-    sm_client = boto3.Session(region_name=REGION).client("sagemaker")
 
     for key, config in MODELS.items():
         endpoint_name = config["endpoint_name"]
         print(f"Deploying {key} endpoint: {endpoint_name}")
-        model = make_model(config, model_data[key], role, sm_session)
-        deploy_model(model, endpoint_name, mode)
+        create_model(sm_client, config, model_data[key], role, image_uri)
+        endpoint_config_name = create_endpoint_config(sm_client, config, mode)
+        deploy_endpoint(sm_client, endpoint_name, endpoint_config_name)
         status = wait_for_endpoint(sm_client, endpoint_name)
         if status != "InService":
             raise RuntimeError(f"{endpoint_name} did not deploy successfully.")
@@ -192,7 +260,7 @@ def deploy(mode: str, bucket_override: str | None, role_arn: str | None) -> None
 
 
 def cleanup() -> None:
-    sm_client = boto3.Session(region_name=REGION).client("sagemaker")
+    sm_client = make_boto_session().client("sagemaker")
     for config in MODELS.values():
         endpoint_name = config["endpoint_name"]
         model_name = config["model_name"]
@@ -221,11 +289,16 @@ def main() -> None:
     parser.add_argument("--mode", choices=sorted(VALID_DEPLOYMENT_MODES), default=DEPLOYMENT_MODE)
     parser.add_argument("--s3-bucket", default=None, help="Override S3_BUCKET. Defaults to SageMaker's default bucket.")
     parser.add_argument("--role-arn", default=None, help="Optional execution role ARN fallback outside SageMaker Studio.")
+    parser.add_argument(
+        "--image-uri",
+        default=None,
+        help="Custom ECR image URI. Defaults to account-local ECR repo/tag or SAGEMAKER_INFERENCE_IMAGE_URI.",
+    )
     args = parser.parse_args()
     if args.cleanup:
         cleanup()
     else:
-        deploy(args.mode, args.s3_bucket, args.role_arn)
+        deploy(args.mode, args.s3_bucket, args.role_arn, args.image_uri)
 
 
 if __name__ == "__main__":
