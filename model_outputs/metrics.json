@@ -1,0 +1,108 @@
+{
+  "selected_model": "XGBoost",
+  "selection_criteria": [
+    "macro_f1",
+    "reduce_recall",
+    "progress_recall"
+  ],
+  "validation": {
+    "LogisticRegression": {
+      "accuracy": 0.9107534747622531,
+      "macro_f1": 0.8713273092906326,
+      "reduce_recall": 0.967741935483871,
+      "maintain_recall": 0.8704268292682927,
+      "progress_recall": 0.8758169934640523,
+      "per_class": {
+        "REDUCE": {
+          "precision": 0.9747292418772563,
+          "recall": 0.967741935483871,
+          "f1": 0.9712230215827338,
+          "support": 558
+        },
+        "MAINTAIN": {
+          "precision": 0.9500831946755408,
+          "recall": 0.8704268292682927,
+          "f1": 0.9085123309466985,
+          "support": 656
+        },
+        "PROGRESS": {
+          "precision": 0.6320754716981132,
+          "recall": 0.8758169934640523,
+          "f1": 0.7342465753424657,
+          "support": 153
+        }
+      }
+    },
+    "XGBoost": {
+      "accuracy": 0.9992684711046086,
+      "macro_f1": 0.9986599648344295,
+      "reduce_recall": 1.0,
+      "maintain_recall": 0.9984756097560976,
+      "progress_recall": 1.0,
+      "per_class": {
+        "REDUCE": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "support": 558
+        },
+        "MAINTAIN": {
+          "precision": 1.0,
+          "recall": 0.9984756097560976,
+          "f1": 0.9992372234935164,
+          "support": 656
+        },
+        "PROGRESS": {
+          "precision": 0.9935064935064936,
+          "recall": 1.0,
+          "f1": 0.996742671009772,
+          "support": 153
+        }
+      }
+    }
+  },
+  "test": {
+    "accuracy": 0.9992469879518072,
+    "macro_f1": 0.9988104408343776,
+    "reduce_recall": 1.0,
+    "maintain_recall": 0.9983136593591906,
+    "progress_recall": 1.0,
+    "per_class": {
+      "REDUCE": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 552
+      },
+      "MAINTAIN": {
+        "precision": 1.0,
+        "recall": 0.9983136593591906,
+        "f1": 0.99915611814346,
+        "support": 593
+      },
+      "PROGRESS": {
+        "precision": 0.9945652173913043,
+        "recall": 1.0,
+        "f1": 0.997275204359673,
+        "support": 183
+      }
+    }
+  },
+  "confusion_matrix": [
+    [
+      552,
+      0,
+      0
+    ],
+    [
+      0,
+      592,
+      1
+    ],
+    [
+      0,
+      0,
+      183
+    ]
+  ]
+}

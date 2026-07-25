@@ -1,0 +1,10 @@
+pandas
+numpy
+scikit-learn
+xgboost
+matplotlib
+joblib
+openpyxl
+
+# Model 2 VO2 forecasting uses the same pandas, scikit-learn, xgboost,
+# matplotlib, and joblib dependencies listed above.

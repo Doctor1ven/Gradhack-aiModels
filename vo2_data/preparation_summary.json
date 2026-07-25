@@ -1,0 +1,36 @@
+{
+  "synthetic_data_notice": "Trained from synthetic longitudinal data; not clinically validated.",
+  "original_row_count": 62471,
+  "unique_member_count": 6255,
+  "usable_four_week_prediction_rows": 37451,
+  "rows_removed_missing_future_vo2": 25020,
+  "target_statistics": {
+    "min": 19.7,
+    "max": 52.6,
+    "mean": 36.17330111345491,
+    "median": 36.0,
+    "std": 6.662616256000501
+  },
+  "vo2_change_4_weeks_statistics": {
+    "min": -3.400000000000002,
+    "max": 3.900000000000002,
+    "mean": 0.3946329871031481,
+    "median": 0.3999999999999986
+  },
+  "train_rows": 26263,
+  "validation_rows": 5560,
+  "test_rows": 5628,
+  "numeric_feature_count": 44,
+  "categorical_feature_count": 20,
+  "feature_count": 64,
+  "leakage_columns_remaining": [],
+  "generated_files": [
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\vo2_data\\vo2_audit_dataset.csv",
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\vo2_data\\model_dataset.csv",
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\vo2_data\\train.csv",
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\vo2_data\\validation.csv",
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\vo2_data\\test.csv",
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\vo2_data\\feature_list.json",
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\vo2_data\\preparation_summary.json"
+  ]
+}

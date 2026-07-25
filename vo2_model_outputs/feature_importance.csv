@@ -1,0 +1,21 @@
+feature,importance
+numeric__VO2 Max Estimate,0.5172856
+numeric__Previous Session VO2,0.42039338
+numeric__RPE 1-10,0.0035318905
+categorical__Clinician Cleared_Yes,0.0032091963
+categorical__Clinician Cleared_No,0.0030628687
+categorical__Contraindication Flag_No,0.0024350907
+categorical__Severity_High,0.0019626338
+numeric__Previous Session RPE,0.0014286904
+categorical__Contraindication Flag_Yes,0.0013688765
+numeric__average_vo2_last_3,0.0011451249
+numeric__Duration Min,0.00088099245
+categorical__Recovery Context_General deconditioning,0.0007114578
+numeric__Pain Score,0.00069631555
+numeric__vo2_change_from_previous,0.000676219
+categorical__Condition Category_General deconditioning,0.0006070876
+categorical__Diagnosis or Event_Lower back strain,0.0005993753
+categorical__Diagnosis or Event_Hypertension,0.00059555325
+numeric__average_rpe_last_3,0.0005684125
+categorical__Diagnosis or Event_Uncomplicated birth recovery,0.00054583757
+categorical__Diagnosis or Event_Preventive wellness check,0.0005307056

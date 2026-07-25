@@ -1,0 +1,141 @@
+{
+  "synthetic_data_notice": "Trained from synthetic longitudinal data; not clinically validated.",
+  "selected_model": "XGBoost",
+  "selection_criteria": [
+    "macro_f1",
+    "reduce_recall",
+    "balanced_accuracy",
+    "progress_recall"
+  ],
+  "validation": {
+    "LogisticRegression": {
+      "accuracy": 0.7190112252209219,
+      "balanced_accuracy": 0.688055031510633,
+      "macro_f1": 0.6682186430048312,
+      "reduce_recall": 0.7931616715913887,
+      "maintain_recall": 0.5478468899521531,
+      "progress_recall": 0.723156532988357,
+      "per_class": {
+        "REDUCE": {
+          "precision": 0.8988280315713943,
+          "recall": 0.7931616715913887,
+          "f1": 0.8426953694360354,
+          "support": 4738
+        },
+        "MAINTAIN": {
+          "precision": 0.5390772128060264,
+          "recall": 0.5478468899521531,
+          "f1": 0.5434266729947793,
+          "support": 2090
+        },
+        "PROGRESS": {
+          "precision": 0.5403576607056549,
+          "recall": 0.723156532988357,
+          "f1": 0.6185338865836791,
+          "support": 1546
+        }
+      }
+    },
+    "RandomForest": {
+      "accuracy": 0.7353713876283735,
+      "balanced_accuracy": 0.7247147615548521,
+      "macro_f1": 0.6968115782264173,
+      "reduce_recall": 0.7695230054875475,
+      "maintain_recall": 0.6258373205741626,
+      "progress_recall": 0.7787839586028461,
+      "per_class": {
+        "REDUCE": {
+          "precision": 0.9346321456036913,
+          "recall": 0.7695230054875475,
+          "f1": 0.8440791758305359,
+          "support": 4738
+        },
+        "MAINTAIN": {
+          "precision": 0.5523648648648649,
+          "recall": 0.6258373205741626,
+          "f1": 0.5868102288021534,
+          "support": 2090
+        },
+        "PROGRESS": {
+          "precision": 0.5719714964370546,
+          "recall": 0.7787839586028461,
+          "f1": 0.6595453300465626,
+          "support": 1546
+        }
+      }
+    },
+    "XGBoost": {
+      "accuracy": 0.7377597325053737,
+      "balanced_accuracy": 0.7389143526437837,
+      "macro_f1": 0.7026417616550366,
+      "reduce_recall": 0.7547488391726467,
+      "maintain_recall": 0.6282296650717704,
+      "progress_recall": 0.833764553686934,
+      "per_class": {
+        "REDUCE": {
+          "precision": 0.9558941459502807,
+          "recall": 0.7547488391726467,
+          "f1": 0.843495695247081,
+          "support": 4738
+        },
+        "MAINTAIN": {
+          "precision": 0.5603926589842083,
+          "recall": 0.6282296650717704,
+          "f1": 0.592375366568915,
+          "support": 2090
+        },
+        "PROGRESS": {
+          "precision": 0.5628820960698689,
+          "recall": 0.833764553686934,
+          "f1": 0.6720542231491137,
+          "support": 1546
+        }
+      }
+    }
+  },
+  "test": {
+    "accuracy": 0.7510953226761398,
+    "balanced_accuracy": 0.7567176672918042,
+    "macro_f1": 0.7123390728927737,
+    "reduce_recall": 0.7609352953033662,
+    "maintain_recall": 0.6844281120808452,
+    "progress_recall": 0.8247895944912013,
+    "per_class": {
+      "REDUCE": {
+        "precision": 0.9566649771920933,
+        "recall": 0.7609352953033662,
+        "f1": 0.847647917368362,
+        "support": 4961
+      },
+      "MAINTAIN": {
+        "precision": 0.5957616953218713,
+        "recall": 0.6844281120808452,
+        "f1": 0.6370243693886276,
+        "support": 2177
+      },
+      "PROGRESS": {
+        "precision": 0.5395395395395396,
+        "recall": 0.8247895944912013,
+        "f1": 0.6523449319213314,
+        "support": 1307
+      }
+    }
+  },
+  "confusion_matrix": [
+    [
+      3775,
+      791,
+      395
+    ],
+    [
+      162,
+      1490,
+      525
+    ],
+    [
+      9,
+      220,
+      1078
+    ]
+  ]
+}

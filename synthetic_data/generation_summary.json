@@ -1,0 +1,97 @@
+{
+  "synthetic_data_notice": "Generated synthetic MVP data. This is not clinically validated.",
+  "members_processed": 6255,
+  "original_exercise_records": 9016,
+  "synthetic_sessions_generated": 62471,
+  "average_sessions_per_member": 9.987370103916867,
+  "recovery_profile_counts": {
+    "normal recovery": 1873,
+    "slow recovery": 1290,
+    "fast recovery": 940,
+    "recovery with setbacks": 893,
+    "poor adherence": 656,
+    "strong adherence": 603
+  },
+  "setback_sessions": 1072,
+  "numeric_summary": {
+    "Duration Min": {
+      "min": 0.0,
+      "max": 84.0,
+      "mean": 17.31,
+      "median": 11.0
+    },
+    "Distance Km": {
+      "min": 0.0,
+      "max": 9.37,
+      "mean": 1.216,
+      "median": 0.72
+    },
+    "Avg Heart Rate": {
+      "min": 92.0,
+      "max": 181.0,
+      "mean": 130.258,
+      "median": 130.0
+    },
+    "Max Heart Rate": {
+      "min": 108.0,
+      "max": 220.0,
+      "mean": 171.856,
+      "median": 171.0
+    },
+    "Resting Heart Rate": {
+      "min": 51.0,
+      "max": 110.0,
+      "mean": 75.053,
+      "median": 75.0
+    },
+    "HRV ms": {
+      "min": 32.0,
+      "max": 74.0,
+      "mean": 50.859,
+      "median": 51.0
+    },
+    "Sleep Hours": {
+      "min": 3.0,
+      "max": 10.0,
+      "mean": 6.831,
+      "median": 6.8
+    },
+    "Sleep Quality Score": {
+      "min": 74.0,
+      "max": 98.0,
+      "mean": 92.866,
+      "median": 95.0
+    },
+    "Calories Burned": {
+      "min": 0.0,
+      "max": 738.0,
+      "mean": 125.066,
+      "median": 83.0
+    },
+    "VO2 Max Estimate": {
+      "min": 19.7,
+      "max": 52.6,
+      "mean": 35.968,
+      "median": 35.8
+    },
+    "RPE 1-10": {
+      "min": 1.0,
+      "max": 10.0,
+      "mean": 7.623,
+      "median": 8.0
+    },
+    "Pain Score": {
+      "min": 0.0,
+      "max": 10.0,
+      "mean": 3.51,
+      "median": 3.3
+    }
+  },
+  "validation_failures": [],
+  "generated_files": [
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\synthetic_data\\synthetic_weekly_sessions.csv",
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\synthetic_data\\combined_exercise_data.csv",
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\synthetic_data\\member_recovery_profiles.csv",
+    "C:\\Users\\jjweb\\OneDrive\\Desktop\\Recovery Readiness Model\\synthetic_data\\generation_summary.json"
+  ]
+}

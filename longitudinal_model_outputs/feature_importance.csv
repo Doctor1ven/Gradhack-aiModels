@@ -1,0 +1,21 @@
+feature,importance
+numeric__RPE 1-10,0.23515333
+numeric__previous_rpe,0.10320431
+numeric__Sleep Hours,0.055475216
+categorical__Recovery Stage_Acute recovery,0.035926815
+categorical__Contraindication Flag_Yes,0.029234739
+numeric__Pain Score,0.025076477
+categorical__Clinician Cleared_Yes,0.024179159
+categorical__Clinician Cleared_No,0.019700183
+categorical__Severity_High,0.019647421
+categorical__Contraindication Flag_No,0.019250792
+numeric__average_sleep_last_3,0.015059026
+numeric__average_rpe_last_3,0.01338822
+numeric__Duration Min,0.010978449
+numeric__previous_pain,0.008960375
+numeric__Distance Km,0.0061851395
+numeric__completion_rate_before_current,0.0060533206
+categorical__Gender_Male,0.0059727076
+categorical__Diagnosis or Event_Lower back strain,0.005429016
+numeric__Calories Burned,0.0053385543
+categorical__Recovery Goal_Build running confidence,0.0052898526

@@ -1,0 +1,21 @@
+feature,importance
+categorical__Recovery Stage_Acute recovery,0.13742042
+categorical__Severity_Moderate,0.12830582
+categorical__Clinician Cleared_No,0.08898164
+categorical__Severity_High,0.07588748
+numeric__RPE 1-10,0.06539323
+categorical__Recovery Stage_Building consistency,0.06287863
+numeric__Pain Score,0.046064433
+categorical__Contraindication Flag_No,0.046057813
+categorical__Recovery Stage_Maintenance,0.03936349
+categorical__Clinician Cleared_Yes,0.038642414
+categorical__Contraindication Flag_Yes,0.03242276
+numeric__Sleep Hours,0.030987065
+categorical__VO2 Risk Band_Low,0.029696256
+categorical__VO2 Risk Band_High,0.028950438
+categorical__Activity Baseline_Post-intervention restart,0.020281792
+categorical__Recovery Stage_Progression,0.018201152
+categorical__Recovery Stage_Early restart,0.016923614
+numeric__Workout Load,0.016523262
+categorical__VO2 Risk Band_Medium,0.011973128
+categorical__Workout Type_Walking,0.0100175105
