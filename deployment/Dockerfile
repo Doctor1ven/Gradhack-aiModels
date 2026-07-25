@@ -18,4 +18,8 @@ COPY app /opt/program/app
 
 EXPOSE 8080
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "4", "--timeout", "120", "app.server:app"]
+# SageMaker starts custom containers as `docker run <image> serve`. With only
+# a CMD, that `serve` argument replaces gunicorn and the container exits with
+# "entrypoint executable serve not found". An ENTRYPOINT via sh -c absorbs the
+# extra argument (it lands in $0 and is ignored).
+ENTRYPOINT ["/bin/sh", "-c", "exec gunicorn --bind 0.0.0.0:8080 --workers 1 --threads 4 --timeout 120 --chdir /opt/program app.server:app"]
